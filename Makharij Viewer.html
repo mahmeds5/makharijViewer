@@ -1,182 +1,1145 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Makharij Viewer</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap">
-<style>
-:root{--bg:#f4f1ec;--panel:#fffdf9;--ink:#1d2127;--mut:#6b7078;--line:#ddd6ca;--acc:#1f7a5c;--accbg:#dff1ea;--stage:#e6e0d6;--chip:#f3eee6;--ov:rgba(255,253,249,.9);
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171c;--panel:#1b1f26;--ink:#e8e6e1;--mut:#9aa0a8;--line:#2c323b;--acc:#5fd1a4;--accbg:#1f3a30;--stage:#0f1216;--chip:#242a33;--ov:rgba(27,31,38,.9)}}
-:root[data-theme="dark"]{--bg:#14171c;--panel:#1b1f26;--ink:#e8e6e1;--mut:#9aa0a8;--line:#2c323b;--acc:#5fd1a4;--accbg:#1f3a30;--stage:#0f1216;--chip:#242a33;--ov:rgba(27,31,38,.9)}
-html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
-body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:13px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
-.app{display:grid;grid-template-columns:250px 1fr 300px;height:100%}
-.side{overflow-y:auto;background:var(--panel);padding:10px 12px;min-height:0}
-.side.l{border-right:1px solid var(--line)}.side.r{border-left:1px solid var(--line)}
-.stage{position:relative;min-height:0;background:var(--stage)}
-canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
-.ov{position:absolute;background:var(--ov);border:1px solid var(--line);border-radius:10px}
-#info{left:10px;top:10px;padding:8px 12px;max-width:min(300px,60%)}
-#info .big{font-size:28px;line-height:1.2}#info p{margin:2px 0 0;color:var(--mut);font-size:12px}
-.hint{right:10px;top:10px;padding:4px 8px;font-size:11px;color:var(--mut)}
-#cams{left:50%;transform:translateX(-50%);bottom:10px;padding:5px;display:flex;gap:4px;flex-wrap:wrap;justify-content:center;width:max-content;max-width:calc(100% - 20px)}
-.ar{font-family:"Amiri","Noto Naskh Arabic","Traditional Arabic",serif;direction:rtl}
-h1{font-size:16px;margin:0}.sub{color:var(--mut);font-size:11px;margin:0 0 4px}
-h2{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:10px 0 5px}
-.chips{display:flex;flex-wrap:wrap;gap:4px}
-.chip{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:7px;padding:2px 7px;cursor:pointer;display:flex;gap:5px;align-items:baseline;font:inherit;font-size:12px}
-.chip .ar{font-size:16px}.chip.on{background:var(--accbg);border-color:var(--acc)}
-.row{display:grid;grid-template-columns:112px 1fr;align-items:center;gap:6px;margin:3px 0;font-size:12px}
-input[type=range]{width:100%;margin:0;accent-color:var(--acc)}
-.cks{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px;margin-top:4px}
-label.ck{display:flex;gap:6px;align-items:center;font-size:12px}
-.btn{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:7px;padding:3px 8px;font:inherit;font-size:12px;cursor:pointer}
-.leg{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:4px}.leg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px}
-#parts{columns:2;column-gap:12px}#parts .row{grid-template-columns:1fr;gap:0;margin:0 0 5px;break-inside:avoid}
-.note{font-size:11px;color:var(--mut);margin-top:8px}
-@media(max-width:800px){body{overflow:auto}.app{display:flex;flex-direction:column;height:auto}.stage{height:55vh;flex:none}.side{overflow:visible}.side.l,.side.r{border:0;border-top:1px solid var(--line)}}
-</style></head><body>
-<div class="app">
-<div class="side l"><h1>Makharij Viewer</h1><p class="sub">Stylized model · v1 prototype</p><div id="groups"></div></div>
-<div class="stage" id="stage">
-<div class="ov" id="info"><b>Pick a makhraj</b><p>The tongue moves and the exact point lights up.</p></div>
-<div class="ov hint">drag = rotate · scroll/pinch = zoom</div>
-<div class="ov" id="cams"><button class="btn" id="reset">⟲ Reset</button></div>
-</div>
-<div class="side r">
-<h2 style="margin-top:0">Tongue &amp; jaws</h2><div id="sl"></div>
-<div class="leg"><span><i style="background:#8f3b55"></i>root/back</span><span><i style="background:#c4506b"></i>middle</span><span><i style="background:#e27a8c"></i>blade</span><span><i style="background:#f4a6ab"></i>tip</span></div>
-<h2>View</h2>
-<div class="row"><span>Skin opacity</span><input type="range" id="op" min="0" max="100" value="22"></div>
-<div class="cks">
-<label class="ck"><input type="checkbox" id="cut"> Cutaway</label>
-<label class="ck"><input type="checkbox" id="teeth" checked> Teeth</label>
-<label class="ck"><input type="checkbox" id="follow"> Tongue follows jaw</label>
-<label class="ck"><input type="checkbox" id="pt" checked> Per-part opacity</label></div>
-<h2>Per-part opacity</h2><div id="parts"></div>
-<p class="note">Poses are approximate. Have the teacher verify each point before teaching from it.</p>
-</div></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
-const T=THREE,host=document.getElementById('stage'),$=s=>document.querySelector(s),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const renderer=new T.WebGLRenderer({antialias:true,alpha:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.localClippingEnabled=true;
-const cv=renderer.domElement;host.appendChild(cv);
-const scene=new T.Scene(),cam=new T.PerspectiveCamera(38,1,.1,200);
-scene.add(new T.HemisphereLight(0xfff4ea,0x5a4a52,.9));
-const dl=new T.DirectionalLight(0xffffff,.7);dl.position.set(5,8,20);scene.add(dl);const dl2=new T.DirectionalLight(0xffd9c8,.35);dl2.position.set(-8,-4,12);scene.add(dl2);
-const clip=new T.Plane(new T.Vector3(0,0,-1),0);renderer.clippingPlanes=[];
+<!--
+  Makharij Viewer: interactive 3D tajweed tool (single file, three.js r128).
+  Sections in the script: scene + lights, model geometry, tongue, markers,
+  camera, makharij data (M), UI wiring, render loop.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Makharij Viewer</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Amiri:wght@400;700&display=swap"
+    />
+    <style>
+      :root {
+        --bg: #eceff3;
+        --panel: #ffffff;
+        --ink: #141a22;
+        --mut: #6a7380;
+        --line: #e1e5ea;
+        --acc: #12a37f;
+        --accink: #fff;
+        --accbg: rgba(18, 163, 127, 0.12);
+        --chip: #f2f4f7;
+        --ov: rgba(255, 255, 255, 0.72);
+        --st1: #fbfcfd;
+        --st2: #d5dce5;
+        --sh: 0 8px 30px rgba(20, 26, 34, 0.08);
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #0a0d12;
+          --panel: #141922;
+          --ink: #e9edf2;
+          --mut: #8b95a3;
+          --line: #252c37;
+          --acc: #3ddbb0;
+          --accink: #06251c;
+          --accbg: rgba(61, 219, 176, 0.14);
+          --chip: #1c222d;
+          --ov: rgba(20, 25, 34, 0.7);
+          --st1: #1b222c;
+          --st2: #090c10;
+          --sh: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #0a0d12;
+        --panel: #141922;
+        --ink: #e9edf2;
+        --mut: #8b95a3;
+        --line: #252c37;
+        --acc: #3ddbb0;
+        --accink: #06251c;
+        --accbg: rgba(61, 219, 176, 0.14);
+        --chip: #1c222d;
+        --ov: rgba(20, 25, 34, 0.7);
+        --st1: #1b222c;
+        --st2: #090c10;
+        --sh: 0 8px 30px rgba(0, 0, 0, 0.4);
+      }
+      html {
+        height: 100%;
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+      }
+      body {
+        height: 100%;
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          13px/1.4 "Inter",
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+      .app {
+        display: grid;
+        grid-template-columns: 260px 1fr 310px;
+        gap: 12px;
+        height: 100%;
+        padding: 12px;
+        box-sizing: border-box;
+      }
+      .side {
+        overflow-y: auto;
+        background: var(--panel);
+        padding: 14px;
+        min-height: 0;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: var(--sh);
+        scrollbar-width: thin;
+      }
+      .stage {
+        position: relative;
+        min-height: 0;
+        border-radius: 18px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        box-shadow: var(--sh);
+        background: radial-gradient(ellipse at 50% 40%, var(--st1), var(--st2));
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        cursor: grab;
+      }
+      canvas:active {
+        cursor: grabbing;
+      }
+      .ov {
+        position: absolute;
+        background: var(--ov);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+      }
+      #info {
+        left: 12px;
+        top: 12px;
+        padding: 10px 14px;
+        max-width: min(300px, 60%);
+      }
+      #info b {
+        font-size: 14px;
+      }
+      #info .big {
+        font-size: 32px;
+        line-height: 1.2;
+        color: var(--acc);
+      }
+      #info p {
+        margin: 3px 0 0;
+        color: var(--mut);
+        font-size: 12px;
+      }
+      .hint {
+        right: 12px;
+        top: 12px;
+        padding: 5px 10px;
+        font-size: 11px;
+        color: var(--mut);
+        border-radius: 99px;
+      }
+      #cams {
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 12px;
+        padding: 6px;
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+        width: max-content;
+        max-width: calc(100% - 24px);
+        border-radius: 99px;
+      }
+      .ar {
+        font-family: "Amiri", "Noto Naskh Arabic", "Traditional Arabic", serif;
+        direction: rtl;
+      }
+      h1 {
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin: 0;
+      }
+      .sub {
+        color: var(--mut);
+        font-size: 11px;
+        margin: 1px 0 6px;
+      }
+      h2 {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--mut);
+        margin: 14px 0 6px;
+      }
+      h2::before {
+        content: "";
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--acc);
+        margin-right: 7px;
+        vertical-align: 1px;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .chip {
+        border: 1px solid var(--line);
+        background: var(--chip);
+        color: var(--ink);
+        border-radius: 99px;
+        padding: 3px 10px;
+        cursor: pointer;
+        display: flex;
+        gap: 6px;
+        align-items: baseline;
+        font: inherit;
+        font-size: 12px;
+        transition: 0.15s;
+      }
+      .chip .ar {
+        font-size: 16px;
+      }
+      .chip:hover {
+        border-color: var(--acc);
+      }
+      .chip.on {
+        background: var(--acc);
+        color: var(--accink);
+        border-color: var(--acc);
+        font-weight: 600;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 112px 1fr;
+        align-items: center;
+        gap: 8px;
+        margin: 4px 0;
+        font-size: 12px;
+        color: var(--mut);
+      }
+      input[type="range"] {
+        width: 100%;
+        margin: 0;
+        height: 16px;
+        background: transparent;
+        -webkit-appearance: none;
+        appearance: none;
+        cursor: pointer;
+      }
+      input[type="range"]::-webkit-slider-runnable-track {
+        height: 4px;
+        border-radius: 4px;
+        background: var(--line);
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 14px;
+        height: 14px;
+        margin-top: -5px;
+        border-radius: 50%;
+        background: var(--acc);
+        border: 2px solid var(--panel);
+        box-shadow: 0 0 0 1px var(--acc);
+      }
+      input[type="range"]::-moz-range-track {
+        height: 4px;
+        border-radius: 4px;
+        background: var(--line);
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--acc);
+        border: 2px solid var(--panel);
+      }
+      .cks {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 8px;
+        margin-top: 8px;
+      }
+      label.ck {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      label.ck input {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 28px;
+        height: 16px;
+        border-radius: 99px;
+        background: var(--line);
+        position: relative;
+        margin: 0;
+        cursor: pointer;
+        transition: 0.2s;
+        flex: none;
+      }
+      label.ck input::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #fff;
+        transition: 0.2s;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      }
+      label.ck input:checked {
+        background: var(--acc);
+      }
+      label.ck input:checked::after {
+        transform: translateX(12px);
+      }
+      .btn {
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--ink);
+        border-radius: 99px;
+        padding: 4px 11px;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        transition: 0.15s;
+      }
+      .btn:hover {
+        background: var(--accbg);
+        border-color: var(--acc);
+      }
+      .leg {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        font-size: 11px;
+        color: var(--mut);
+        margin-top: 6px;
+      }
+      .leg i {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 4px;
+      }
+      #parts {
+        columns: 2;
+        column-gap: 14px;
+      }
+      #parts .row {
+        grid-template-columns: 1fr;
+        gap: 1px;
+        margin: 0 0 6px;
+        break-inside: avoid;
+      }
+      .note {
+        font-size: 11px;
+        color: var(--mut);
+        margin-top: 10px;
+        line-height: 1.4;
+      }
+      @media (max-width: 800px) {
+        body {
+          overflow: auto;
+        }
+        .app {
+          display: flex;
+          flex-direction: column;
+          height: auto;
+          padding: 8px;
+          gap: 8px;
+        }
+        .stage {
+          height: 55vh;
+          flex: none;
+        }
+        .side {
+          overflow: visible;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="side l">
+        <h1>Makharij Viewer</h1>
+        <p class="sub">Stylized model · v1 prototype</p>
+        <div id="groups"></div>
+      </div>
+      <div class="stage" id="stage">
+        <div class="ov" id="info">
+          <b>Pick a makhraj</b>
+          <p>The tongue moves and the exact point lights up.</p>
+        </div>
+        <div class="ov hint">drag = rotate · scroll/pinch = zoom</div>
+        <div class="ov" id="cams"><button class="btn" id="reset">⟲ Reset</button></div>
+      </div>
+      <div class="side r">
+        <h2 style="margin-top: 0">Tongue &amp; jaws</h2>
+        <div id="sl"></div>
+        <div class="leg">
+          <span>
+            <i style="background: #8f3b55"></i>
+            root/back
+          </span>
+          <span>
+            <i style="background: #c4506b"></i>
+            middle
+          </span>
+          <span>
+            <i style="background: #e27a8c"></i>
+            blade
+          </span>
+          <span>
+            <i style="background: #f4a6ab"></i>
+            tip
+          </span>
+        </div>
+        <h2>View</h2>
+        <div class="row">
+          <span>Skin opacity</span>
+          <input type="range" id="op" min="0" max="100" value="22" />
+        </div>
+        <div class="cks">
+          <label class="ck">
+            <input type="checkbox" id="cut" />
+            Cutaway
+          </label>
+          <label class="ck">
+            <input type="checkbox" id="teeth" checked />
+            Teeth
+          </label>
+          <label class="ck">
+            <input type="checkbox" id="follow" />
+            Tongue follows jaw
+          </label>
+          <label class="ck">
+            <input type="checkbox" id="pt" checked />
+            Per-part opacity
+          </label>
+        </div>
+        <h2>Per-part opacity</h2>
+        <div id="parts"></div>
+        <p class="note">
+          Poses are approximate. Have the teacher verify each point before teaching from it.
+        </p>
+      </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+      const T = THREE,
+        host = document.getElementById("stage"),
+        $ = (s) => document.querySelector(s),
+        clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+      renderer.localClippingEnabled = true;
+      const cv = renderer.domElement;
+      host.appendChild(cv);
+      const scene = new T.Scene(),
+        cam = new T.PerspectiveCamera(38, 1, 0.1, 200);
+      scene.add(new T.HemisphereLight(0xfff4ea, 0x5a4a52, 0.9));
+      const dl = new T.DirectionalLight(0xffffff, 0.7);
+      dl.position.set(5, 8, 20);
+      scene.add(dl);
+      const dl2 = new T.DirectionalLight(0xffd9c8, 0.35);
+      dl2.position.set(-8, -4, 12);
+      scene.add(dl2);
+      const clip = new T.Plane(new T.Vector3(0, 0, -1), 0);
+      renderer.clippingPlanes = [];
 
-function chaikin(p,n){for(let k=0;k<n;k++){const q=[];for(let i=0;i<p.length;i++){const a=p[i],b=p[(i+1)%p.length];q.push([.75*a[0]+.25*b[0],.75*a[1]+.25*b[1]],[.25*a[0]+.75*b[0],.25*a[1]+.75*b[1]])}p=q}return p}
-function slab(pts,depth,mat,sm,pv){pv=pv||[0,0];const s=new T.Shape(chaikin(pts,sm).map(p=>new T.Vector2(p[0]-pv[0],p[1]-pv[1])));
-const g=new T.ExtrudeGeometry(s,{depth:depth,bevelEnabled:false});g.translate(0,0,-depth/2);return new T.Mesh(g,mat)}
-const mk=(c,o)=>new T.MeshStandardMaterial(Object.assign({color:c,roughness:.7,side:T.DoubleSide},o||{}));
-const skin=mk(0xd9a98a,{transparent:true,opacity:.22,depthWrite:false});
-const pink=mk(0xc9707c),dark=mk(0x8f4a55),toothM=mk(0xf7f3e8,{roughness:.4}),skinL=skin.clone(),palM=mk(0xc9707c),floorM=mk(0x8f4a55),throatM=mk(0x8f4a55),gumM=mk(0xc9707c);
+      function chaikin(p, n) {
+        for (let k = 0; k < n; k++) {
+          const q = [];
+          for (let i = 0; i < p.length; i++) {
+            const a = p[i],
+              b = p[(i + 1) % p.length];
+            q.push(
+              [0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]],
+              [0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]],
+            );
+          }
+          p = q;
+        }
+        return p;
+      }
+      function slab(pts, depth, mat, sm, pv) {
+        pv = pv || [0, 0];
+        const s = new T.Shape(
+          chaikin(pts, sm).map((p) => new T.Vector2(p[0] - pv[0], p[1] - pv[1])),
+        );
+        const g = new T.ExtrudeGeometry(s, { depth: depth, bevelEnabled: false });
+        g.translate(0, 0, -depth / 2);
+        return new T.Mesh(g, mat);
+      }
+      const mk = (c, o) =>
+        new T.MeshStandardMaterial(
+          Object.assign({ color: c, roughness: 0.7, side: T.DoubleSide }, o || {}),
+        );
+      const skin = mk(0xd9a98a, { transparent: true, opacity: 0.22, depthWrite: false });
+      const pink = mk(0xc9707c),
+        dark = mk(0x8f4a55),
+        toothM = mk(0xf7f3e8, { roughness: 0.4 }),
+        skinL = skin.clone(),
+        palM = mk(0xc9707c),
+        floorM = mk(0x8f4a55),
+        throatM = mk(0x8f4a55),
+        gumM = mk(0xc9707c);
 
-const PV=[-3.5,0];
-const jaw=new T.Group();jaw.position.set(PV[0],PV[1],0);scene.add(jaw);
+      const PV = [-3.5, 0];
+      const jaw = new T.Group();
+      jaw.position.set(PV[0], PV[1], 0);
+      scene.add(jaw);
 
-// head (upper) and chin/jaw (lower) skin
-const upper=[[-2.2,-8],[-5.2,-8],[-6.4,-2],[-6.6,3],[-5,7],[-1,8.6],[3,7.8],[4.6,6.2],[4.9,4.8],[5,4.2],[6.5,3],[5.9,2.5],[5.9,1.6],[5.7,.8],[5.4,.4],[-3.5,.4],[-3.5,-3.6],[-2,-4.6]];
-const lower=[[5.4,.4],[5.7,-.1],[5.4,-.9],[4.9,-1.5],[5.5,-2.6],[5,-3.6],[2,-3.9],[-2,-4.1],[-3.5,-3.6],[-3.5,.4]];
-const upG=new T.Group();scene.add(upG);upG.add(slab(upper,7,skin,2));jaw.add(slab(lower,7,skinL,2,PV));
-function outline(pts,par,pv){const q=chaikin(pts,2).map(p=>new T.Vector3(p[0]-pv[0],p[1]-pv[1],-.03));par.add(new T.LineLoop(new T.BufferGeometry().setFromPoints(q),new T.LineBasicMaterial({color:0x5a3d33})))}
-outline(upper,upG,[0,0]);outline(lower,jaw,PV);
-// mouth floor
-jaw.add(slab([[4.5,-.8],[2.5,-1],[0,-1.3],[-2,-2.2],[-3.5,-3.2],[-3.5,-3.6],[0,-2.4],[4.5,-1.4]],4.6,floorM,1,PV));
-// palate + throat wall
-const L=[[4.9,1.5],[4.2,1.9],[3.2,2.3],[1.5,2.7],[-.5,2.5],[-1.8,2.1],[-2.8,1.2],[-3,.5]];
-upG.add(slab(L.concat(L.slice().reverse().map(p=>[p[0],p[1]+.5])),5,palM,1));
-scene.add(slab([[-4.6,3.2],[-3.9,3.2],[-3.9,-4.5],[-4.6,-4.5]],5,throatM,0));
-// nasal passage
-const nas=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3([[-3.4,2.9],[-1,3.5],[2,3.8],[4.8,3.5]].map(p=>new T.Vector3(p[0],p[1],0))),20,.45,10,false),mk(0x6e3a44));upG.add(nas);
-// teeth
-const teethG=new T.Group();upG.add(teethG);
-function row(a,y,h,parent,pv){for(let d=-75;d<=75;d+=15){const th=d*Math.PI/180,up=y>0,m=new T.Mesh(new T.CylinderGeometry(up?.4:.55,up?.55:.4,h,12),toothM);m.scale.x=.55;
-const gm=new T.Mesh(new T.CylinderGeometry(.62,.62,.9,12),gumM);gm.scale.x=.7;gm.position.set(a*Math.cos(th)-pv[0],y-pv[1]+(up?1:-1)*(h/2+.3),2.6*Math.sin(th));gm.rotation.y=-th;parent.add(gm);
-m.position.set(a*Math.cos(th)-pv[0],y-pv[1],2.6*Math.sin(th));m.rotation.y=-th;parent.add(m)}}
-row(4.9,.9,1.2,teethG,[0,0]);const lowT=new T.Group();jaw.add(lowT);row(4.6,-.6,1.2,lowT,PV);
+      // head (upper) and chin/jaw (lower) skin
+      const upper = [
+        [-2.2, -8],
+        [-5.2, -8],
+        [-6.4, -2],
+        [-6.6, 3],
+        [-5, 7],
+        [-1, 8.6],
+        [3, 7.8],
+        [4.6, 6.2],
+        [4.9, 4.8],
+        [5, 4.2],
+        [6.5, 3],
+        [5.9, 2.5],
+        [5.9, 1.6],
+        [5.7, 0.8],
+        [5.4, 0.4],
+        [-3.5, 0.4],
+        [-3.5, -3.6],
+        [-2, -4.6],
+      ];
+      const lower = [
+        [5.4, 0.4],
+        [5.7, -0.1],
+        [5.4, -0.9],
+        [4.9, -1.5],
+        [5.5, -2.6],
+        [5, -3.6],
+        [2, -3.9],
+        [-2, -4.1],
+        [-3.5, -3.6],
+        [-3.5, 0.4],
+      ];
+      const upG = new T.Group();
+      scene.add(upG);
+      upG.add(slab(upper, 7, skin, 2));
+      jaw.add(slab(lower, 7, skinL, 2, PV));
+      function outline(pts, par, pv) {
+        const q = chaikin(pts, 2).map((p) => new T.Vector3(p[0] - pv[0], p[1] - pv[1], -0.03));
+        par.add(
+          new T.LineLoop(
+            new T.BufferGeometry().setFromPoints(q),
+            new T.LineBasicMaterial({ color: 0x5a3d33 }),
+          ),
+        );
+      }
+      outline(upper, upG, [0, 0]);
+      outline(lower, jaw, PV);
+      // mouth floor
+      jaw.add(
+        slab(
+          [
+            [4.5, -0.8],
+            [2.5, -1],
+            [0, -1.3],
+            [-2, -2.2],
+            [-3.5, -3.2],
+            [-3.5, -3.6],
+            [0, -2.4],
+            [4.5, -1.4],
+          ],
+          4.6,
+          floorM,
+          1,
+          PV,
+        ),
+      );
+      // palate + throat wall
+      const L = [
+        [4.9, 1.5],
+        [4.2, 1.9],
+        [3.2, 2.3],
+        [1.5, 2.7],
+        [-0.5, 2.5],
+        [-1.8, 2.1],
+        [-2.8, 1.2],
+        [-3, 0.5],
+      ];
+      upG.add(
+        slab(
+          L.concat(
+            L.slice()
+              .reverse()
+              .map((p) => [p[0], p[1] + 0.5]),
+          ),
+          5,
+          palM,
+          1,
+        ),
+      );
+      scene.add(
+        slab(
+          [
+            [-4.6, 3.2],
+            [-3.9, 3.2],
+            [-3.9, -4.5],
+            [-4.6, -4.5],
+          ],
+          5,
+          throatM,
+          0,
+        ),
+      );
+      // nasal passage
+      const nas = new T.Mesh(
+        new T.TubeGeometry(
+          new T.CatmullRomCurve3(
+            [
+              [-3.4, 2.9],
+              [-1, 3.5],
+              [2, 3.8],
+              [4.8, 3.5],
+            ].map((p) => new T.Vector3(p[0], p[1], 0)),
+          ),
+          20,
+          0.45,
+          10,
+          false,
+        ),
+        mk(0x6e3a44),
+      );
+      upG.add(nas);
+      // teeth
+      const teethG = new T.Group();
+      upG.add(teethG);
+      function row(a, y, h, parent, pv) {
+        for (let d = -75; d <= 75; d += 15) {
+          const th = (d * Math.PI) / 180,
+            up = y > 0,
+            m = new T.Mesh(new T.CylinderGeometry(up ? 0.4 : 0.55, up ? 0.55 : 0.4, h, 12), toothM);
+          m.scale.x = 0.55;
+          const gm = new T.Mesh(new T.CylinderGeometry(0.62, 0.62, 0.9, 12), gumM);
+          gm.scale.x = 0.7;
+          gm.position.set(
+            a * Math.cos(th) - pv[0],
+            y - pv[1] + (up ? 1 : -1) * (h / 2 + 0.3),
+            2.6 * Math.sin(th),
+          );
+          gm.rotation.y = -th;
+          parent.add(gm);
+          m.position.set(a * Math.cos(th) - pv[0], y - pv[1], 2.6 * Math.sin(th));
+          m.rotation.y = -th;
+          parent.add(m);
+        }
+      }
+      row(4.9, 0.9, 1.2, teethG, [0, 0]);
+      const lowT = new T.Group();
+      jaw.add(lowT);
+      row(4.6, -0.6, 1.2, lowT, PV);
 
-// tongue
-const COL=[0x8f3b55,0xc4506b,0xe27a8c,0xf4a6ab].map(c=>new T.Color(c));
-const tongue=new T.Mesh(new T.BufferGeometry(),new T.MeshStandardMaterial({vertexColors:true,roughness:.45,side:T.DoubleSide}));scene.add(tongue);
+      // tongue
+      const COL = [0x8f3b55, 0xc4506b, 0xe27a8c, 0xf4a6ab].map((c) => new T.Color(c));
+      const tongue = new T.Mesh(
+        new T.BufferGeometry(),
+        new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, side: T.DoubleSide }),
+      );
+      scene.add(tongue);
 
-let follow=false;const REST={b:-1,m:-.3,l:-.2,t:-.2,tx:3.9,jaw:2,up:0},cur=Object.assign({},REST),tar=Object.assign({},REST);
-function rebuild(){const j=cur.jaw*Math.PI/180,dy=x=>follow?-(x+3.5)*Math.sin(j)*.55:0;
-const P=[[-3,-2.2],[-1.6,cur.b],[.6,cur.m],[2.6,cur.l],[cur.tx,cur.t]].map(p=>new T.Vector3(p[0],p[1]+dy(p[0]),0));
-const curve=new T.CatmullRomCurve3(P),N=48,R=20,pos=[],col=[],idx=[],cc=new T.Color();
-for(let i=0;i<=N;i++){const u=i/N,c=curve.getPoint(u),tg=curve.getTangent(u),s=Math.sin(Math.PI*Math.min(1,u*1.1)),e=u>.9?Math.sqrt(Math.max(.0004,1-Math.pow((u-.9)/.1,2))):1,th=(.35+.4*s)*e,wd=(.5+1.2*Math.sin(Math.PI*(.1+.8*u)))*e,f=Math.min(2.999,u*3);
-cc.copy(COL[Math.floor(f)]).lerp(COL[Math.floor(f)+1],f%1);
-for(let k=0;k<=R;k++){const a=k/R*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a);pos.push(c.x-tg.y*ca*th,c.y+tg.x*ca*th,sa*wd);col.push(cc.r,cc.g,cc.b)}}
-for(let i=0;i<N;i++)for(let k=0;k<R;k++){const a=i*(R+1)+k,b=a+R+1;idx.push(a,b,a+1,b,b+1,a+1)}
-const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('color',new T.Float32BufferAttribute(col,3));g.setIndex(idx);g.computeVertexNormals();
-tongue.geometry.dispose();tongue.geometry=g;jaw.rotation.z=-j;const ua=cur.up*Math.PI/180;upG.rotation.z=ua;upG.position.set(PV[0]-PV[0]*Math.cos(ua),-PV[0]*Math.sin(ua),0)}
+      let follow = false;
+      const REST = { b: -1, m: -0.3, l: -0.2, t: -0.2, tx: 3.9, jaw: 2, up: 0 },
+        cur = Object.assign({}, REST),
+        tar = Object.assign({}, REST);
+      function rebuild() {
+        const j = (cur.jaw * Math.PI) / 180,
+          dy = (x) => (follow ? -(x + 3.5) * Math.sin(j) * 0.55 : 0);
+        const P = [
+          [-3, -2.2],
+          [-1.6, cur.b],
+          [0.6, cur.m],
+          [2.6, cur.l],
+          [cur.tx, cur.t],
+        ].map((p) => new T.Vector3(p[0], p[1] + dy(p[0]), 0));
+        const curve = new T.CatmullRomCurve3(P),
+          N = 48,
+          R = 20,
+          pos = [],
+          col = [],
+          idx = [],
+          cc = new T.Color();
+        for (let i = 0; i <= N; i++) {
+          const u = i / N,
+            c = curve.getPoint(u),
+            tg = curve.getTangent(u),
+            s = Math.sin(Math.PI * Math.min(1, u * 1.1)),
+            e = u > 0.9 ? Math.sqrt(Math.max(0.0004, 1 - Math.pow((u - 0.9) / 0.1, 2))) : 1,
+            th = (0.35 + 0.4 * s) * e,
+            wd = (0.5 + 1.2 * Math.sin(Math.PI * (0.1 + 0.8 * u))) * e,
+            f = Math.min(2.999, u * 3);
+          cc.copy(COL[Math.floor(f)]).lerp(COL[Math.floor(f) + 1], f % 1);
+          for (let k = 0; k <= R; k++) {
+            const a = (k / R) * Math.PI * 2,
+              ca = Math.cos(a),
+              sa = Math.sin(a);
+            pos.push(c.x - tg.y * ca * th, c.y + tg.x * ca * th, sa * wd);
+            col.push(cc.r, cc.g, cc.b);
+          }
+        }
+        for (let i = 0; i < N; i++)
+          for (let k = 0; k < R; k++) {
+            const a = i * (R + 1) + k,
+              b = a + R + 1;
+            idx.push(a, b, a + 1, b, b + 1, a + 1);
+          }
+        const g = new T.BufferGeometry();
+        g.setAttribute("position", new T.Float32BufferAttribute(pos, 3));
+        g.setAttribute("color", new T.Float32BufferAttribute(col, 3));
+        g.setIndex(idx);
+        g.computeVertexNormals();
+        tongue.geometry.dispose();
+        tongue.geometry = g;
+        jaw.rotation.z = -j;
+        const ua = (cur.up * Math.PI) / 180;
+        upG.rotation.z = ua;
+        upG.position.set(PV[0] - PV[0] * Math.cos(ua), -PV[0] * Math.sin(ua), 0);
+      }
 
-// markers
-const marks=[0,1,2].map(()=>{const m=new T.Mesh(new T.SphereGeometry(.3,16,16),new T.MeshBasicMaterial({color:0xffc400,depthTest:false,transparent:true,opacity:.95}));m.renderOrder=10;m.visible=false;scene.add(m);return m});
+      // markers
+      const marks = [0, 1, 2].map(() => {
+        const m = new T.Mesh(
+          new T.SphereGeometry(0.3, 16, 16),
+          new T.MeshBasicMaterial({
+            color: 0xffc400,
+            depthTest: false,
+            transparent: true,
+            opacity: 0.95,
+          }),
+        );
+        m.renderOrder = 10;
+        m.visible = false;
+        scene.add(m);
+        return m;
+      });
 
-// camera
-const view={az:0,el:.05,dist:17},target=new T.Vector3(.5,-.3,0);
-function setCam(){const a=view.az,e=view.el,d=view.dist;cam.position.set(target.x+d*Math.sin(a)*Math.cos(e),target.y+d*Math.sin(e),d*Math.cos(a)*Math.cos(e));cam.lookAt(target)}
-const ptr=new Map();let pd=0;
-cv.addEventListener('pointerdown',e=>{goal=null;cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY])});
-cv.addEventListener('pointermove',e=>{if(!ptr.has(e.pointerId))return;const o=ptr.get(e.pointerId);
-if(ptr.size===1){view.az-=(e.clientX-o[0])*.008;view.el=clamp(view.el+(e.clientY-o[1])*.008,-1.4,1.4)}
-ptr.set(e.pointerId,[e.clientX,e.clientY]);
-if(ptr.size===2){const [a,b]=[...ptr.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pd)view.dist=clamp(view.dist*pd/d,2,35);pd=d}setCam()});
-['pointerup','pointercancel'].forEach(n=>cv.addEventListener(n,e=>{ptr.delete(e.pointerId);pd=0}));
-cv.addEventListener('wheel',e=>{e.preventDefault();goal=null;view.dist=clamp(view.dist*(1+e.deltaY*.001),2,35);setCam()},{passive:false});
-new ResizeObserver(()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);cam.aspect=w/h;cam.fov=cam.aspect<1.1?Math.min(75,38*1.1/cam.aspect):38;cam.updateProjectionMatrix()}).observe(host);
+      // camera
+      const view = { az: 0, el: 0.05, dist: 17 },
+        target = new T.Vector3(0.5, -0.3, 0);
+      function setCam() {
+        const a = view.az,
+          e = view.el,
+          d = view.dist;
+        cam.position.set(
+          target.x + d * Math.sin(a) * Math.cos(e),
+          target.y + d * Math.sin(e),
+          d * Math.cos(a) * Math.cos(e),
+        );
+        cam.lookAt(target);
+      }
+      const ptr = new Map();
+      let pd = 0;
+      cv.addEventListener("pointerdown", (e) => {
+        goal = null;
+        cv.setPointerCapture(e.pointerId);
+        ptr.set(e.pointerId, [e.clientX, e.clientY]);
+      });
+      cv.addEventListener("pointermove", (e) => {
+        if (!ptr.has(e.pointerId)) return;
+        const o = ptr.get(e.pointerId);
+        if (ptr.size === 1) {
+          view.az -= (e.clientX - o[0]) * 0.008;
+          view.el = clamp(view.el + (e.clientY - o[1]) * 0.008, -1.4, 1.4);
+        }
+        ptr.set(e.pointerId, [e.clientX, e.clientY]);
+        if (ptr.size === 2) {
+          const [a, b] = [...ptr.values()],
+            d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+          if (pd) view.dist = clamp((view.dist * pd) / d, 2, 35);
+          pd = d;
+        }
+        setCam();
+      });
+      ["pointerup", "pointercancel"].forEach((n) =>
+        cv.addEventListener(n, (e) => {
+          ptr.delete(e.pointerId);
+          pd = 0;
+        }),
+      );
+      cv.addEventListener(
+        "wheel",
+        (e) => {
+          e.preventDefault();
+          goal = null;
+          view.dist = clamp(view.dist * (1 + e.deltaY * 0.001), 2, 35);
+          setCam();
+        },
+        { passive: false },
+      );
+      new ResizeObserver(() => {
+        const w = host.clientWidth,
+          h = host.clientHeight;
+        if (!w || !h) return;
+        renderer.setSize(w, h, false);
+        cam.aspect = w / h;
+        cam.fov = cam.aspect < 1.1 ? Math.min(75, (38 * 1.1) / cam.aspect) : 38;
+        cam.updateProjectionMatrix();
+      }).observe(host);
 
-// data
-const M=[
-{g:'Jawf (empty space)',n:'Jawf',ar:'ا و ي',d:'Madd letters come from the empty space of the mouth and throat. Jaw opens, tongue stays low.',k:[[.5,.8]],p:{b:-1.4,m:-.9,l:-.8,t:-.8,tx:3.4,jaw:14}},
-{g:'Halq (throat)',n:'Deepest throat',ar:'ء ه',d:'Furthest point of the throat from the mouth.',k:[[-3.8,-2.8]],p:{b:-1.4,jaw:8}},
-{g:'Halq (throat)',n:'Middle throat',ar:'ع ح',d:'Middle of the throat.',k:[[-3.8,-1.6]],p:{b:-1.4,jaw:8}},
-{g:'Halq (throat)',n:'Nearest throat',ar:'غ خ',d:'Part of the throat closest to the mouth.',k:[[-3.7,-.4]],p:{b:-1.2,jaw:8}},
-{g:'Lisan (tongue)',n:'Qaf',ar:'ق',d:'Back of the tongue against the soft palate.',k:[[-1.6,2.1]],p:{b:1.5,m:.6,l:-.2,t:-.1,tx:3.4}},
-{g:'Lisan (tongue)',n:'Kaf',ar:'ك',d:'Slightly forward of qaf, still the back of the tongue.',k:[[-.2,2.55]],p:{b:1.5,m:1.9,l:.3,t:0,tx:3.5}},
-{g:'Lisan (tongue)',n:'Jim Shin Ya',ar:'ج ش ي',d:'Middle of the tongue against the hard palate.',k:[[1.8,2.65]],p:{b:.4,m:2,l:1.2,t:.3,tx:3.6}},
-{g:'Lisan (tongue)',n:'Dad',ar:'ض',d:'Side of the tongue against the upper molars (side contact is hard to see from the side).',k:[[1,1.5]],p:{b:.9,m:1.2,l:1,t:.8,tx:3.8}},
-{g:'Lisan (tongue)',n:'Lam',ar:'ل',d:'Edge of the tongue tip against the gum ridge.',k:[[4,1.9]],p:{b:0,m:.3,l:1,t:1.4,tx:4}},
-{g:'Lisan (tongue)',n:'Nun',ar:'ن',d:'Tip of the tongue, a little lower than lam.',k:[[4,1.75]],p:{b:0,m:.2,l:.8,t:1.2,tx:4.1}},
-{g:'Lisan (tongue)',n:'Ra',ar:'ر',d:'Tip of the tongue, slightly further back and rolled.',k:[[3.7,2]],p:{b:0,m:.4,l:.9,t:1.5,tx:3.6}},
-{g:'Lisan (tongue)',n:'Ta Dal Ta',ar:'ت د ط',d:'Tip of the tongue at the base of the upper front teeth.',k:[[4.6,1.5]],p:{b:-.3,m:0,l:.6,t:1,tx:4.4}},
-{g:'Lisan (tongue)',n:'Sad Sin Zay',ar:'ص س ز',d:'Tip of the tongue near the lower front teeth.',k:[[4.5,-.1]],p:{b:-.3,m:0,l:.5,t:-.1,tx:4.3}},
-{g:'Lisan (tongue)',n:'Tha Dhal Dha',ar:'ث ذ ظ',d:'Tip of the tongue against the edges of the upper front teeth.',k:[[4.9,.5]],p:{b:-.4,m:-.1,l:.1,t:.7,tx:4.6}},
-{g:'Shafatain (lips)',n:'Fa',ar:'ف',d:'Inside of the lower lip against the tips of the upper front teeth.',k:[[5.1,.45]],p:{jaw:6}},
-{g:'Shafatain (lips)',n:'Ba Mim Waw',ar:'ب م و',d:'Both lips.',k:[[5.55,.4]],p:{jaw:0}},
-{g:'Khayshum (nasal)',n:'Ghunnah',ar:'غنة',d:'The nasal passage, where the nasal sound resonates.',k:[[1.5,3.8]],p:{jaw:0}}];
+      // data
+      const M = [
+        {
+          g: "Jawf (empty space)",
+          n: "Jawf",
+          ar: "ا و ي",
+          d: "Madd letters come from the empty space of the mouth and throat. Jaw opens, tongue stays low.",
+          k: [[0.5, 0.8]],
+          p: { b: -1.4, m: -0.9, l: -0.8, t: -0.8, tx: 3.4, jaw: 14 },
+        },
+        {
+          g: "Halq (throat)",
+          n: "Deepest throat",
+          ar: "ء ه",
+          d: "Furthest point of the throat from the mouth.",
+          k: [[-3.8, -2.8]],
+          p: { b: -1.4, jaw: 8 },
+        },
+        {
+          g: "Halq (throat)",
+          n: "Middle throat",
+          ar: "ع ح",
+          d: "Middle of the throat.",
+          k: [[-3.8, -1.6]],
+          p: { b: -1.4, jaw: 8 },
+        },
+        {
+          g: "Halq (throat)",
+          n: "Nearest throat",
+          ar: "غ خ",
+          d: "Part of the throat closest to the mouth.",
+          k: [[-3.7, -0.4]],
+          p: { b: -1.2, jaw: 8 },
+        },
+        {
+          g: "Lisan (tongue)",
+          n: "Qaf",
+          ar: "ق",
+          d: "Back of the tongue against the soft palate.",
+          k: [[-1.6, 2.1]],
+          p: { b: 1.5, m: 0.6, l: -0.2, t: -0.1, tx: 3.4 },
+        },
+        {
+          g: "Lisan (tongue)",
+          n: "Kaf",
+          ar: "ك",
+          d: "Slightly forward of qaf, still the back of the tongue.",
+          k: [[-0.2, 2.55]],
+          p: { b: 1.5, m: 1.9, l: 0.3, t: 0, tx: 3.5 },
+        },
+        {
+          g: "Lisan (tongue)",
+          n: "Jim Shin Ya",
+          ar: "ج ش ي",
+          d: "Middle of the tongue against the hard palate.",
+          k: [[1.8, 2.65]],
+          p: { b: 0.4, m: 2, l: 1.2, t: 0.3, tx: 3.6 },
+        },
+        {
+          g: "Lisan (tongue)",
+          n: "Dad",
+          ar: "ض",
+          d: "Side of the tongue against the upper molars (side contact is hard to see from the side).",
+          k: [[1, 1.5]],
+          p: { b: 0.9, m: 1.2, l: 1, t: 0.8, tx: 3.8 },
+        },
+        {
+          g: "Lisan (tongue)",
+          n: "Lam",
+          ar: "ل",
+          d: "Edge of the tongue tip against the gum ridge.",
+          k: [[4, 1.9]],
+          p: { b: 0, m: 0.3, l: 1, t: 1.4, tx: 4 },
+        },
+        {
+          g: "Lisan (tongue)",
+          n: "Nun",
+          ar: "ن",
+          d: "Tip of the tongue, a little lower than lam.",
+          k: [[4, 1.75]],
+          p: { b: 0, m: 0.2, l: 0.8, t: 1.2, tx: 4.1 },
+        },
+        {
+          g: "Lisan (tongue)",
+          n: "Ra",
+          ar: "ر",
+          d: "Tip of the tongue, slightly further back and rolled.",
+          k: [[3.7, 2]],
+          p: { b: 0, m: 0.4, l: 0.9, t: 1.5, tx: 3.6 },
+        },
+        {
+          g: "Lisan (tongue)",
+          n: "Ta Dal Ta",
+          ar: "ت د ط",
+          d: "Tip of the tongue at the base of the upper front teeth.",
+          k: [[4.6, 1.5]],
+          p: { b: -0.3, m: 0, l: 0.6, t: 1, tx: 4.4 },
+        },
+        {
+          g: "Lisan (tongue)",
+          n: "Sad Sin Zay",
+          ar: "ص س ز",
+          d: "Tip of the tongue near the lower front teeth.",
+          k: [[4.5, -0.1]],
+          p: { b: -0.3, m: 0, l: 0.5, t: -0.1, tx: 4.3 },
+        },
+        {
+          g: "Lisan (tongue)",
+          n: "Tha Dhal Dha",
+          ar: "ث ذ ظ",
+          d: "Tip of the tongue against the edges of the upper front teeth.",
+          k: [[4.9, 0.5]],
+          p: { b: -0.4, m: -0.1, l: 0.1, t: 0.7, tx: 4.6 },
+        },
+        {
+          g: "Shafatain (lips)",
+          n: "Fa",
+          ar: "ف",
+          d: "Inside of the lower lip against the tips of the upper front teeth.",
+          k: [[5.1, 0.45]],
+          p: { jaw: 6 },
+        },
+        {
+          g: "Shafatain (lips)",
+          n: "Ba Mim Waw",
+          ar: "ب م و",
+          d: "Both lips.",
+          k: [[5.55, 0.4]],
+          p: { jaw: 0 },
+        },
+        {
+          g: "Khayshum (nasal)",
+          n: "Ghunnah",
+          ar: "غنة",
+          d: "The nasal passage, where the nasal sound resonates.",
+          k: [[1.5, 3.8]],
+          p: { jaw: 0 },
+        },
+      ];
 
-// UI
-const info=$('#info'),chips=[];
-[...new Set(M.map(m=>m.g))].forEach(g=>{const h=document.createElement('h2');h.textContent=g;$('#groups').appendChild(h);
-const w=document.createElement('div');w.className='chips';$('#groups').appendChild(w);
-M.filter(m=>m.g===g).forEach(m=>{const b=document.createElement('button');b.className='chip';b.innerHTML='<span class="ar">'+m.ar+'</span><span>'+m.n+'</span>';b.onclick=()=>pick(m,b);w.appendChild(b);chips.push(b)})});
-const SL=[['b','Back of tongue',-2,2.6,.05],['m','Middle',-1.5,2.6,.05],['l','Blade',-1.5,2.2,.05],['t','Tip height',-1.2,2.2,.05],['tx','Tip fwd/back',2.6,4.8,.05],['jaw','Lower jaw open (°)',0,40,1],['up','Upper jaw tilt (°)',0,25,1]],sls={};
-SL.forEach(s=>{const r=document.createElement('div');r.className='row';r.innerHTML='<span>'+s[1]+'</span><input type="range" min="'+s[2]+'" max="'+s[3]+'" step="'+s[4]+'" value="'+REST[s[0]]+'">';
-const i=r.querySelector('input');i.oninput=()=>{tar[s[0]]=+i.value;if(s[0]!=='jaw'&&s[0]!=='up')chips.forEach(c=>c.classList.remove('on'))};sls[s[0]]=i;$('#sl').appendChild(r)});
-function pick(m,b){chips.forEach(c=>c.classList.toggle('on',c===b));Object.assign(tar,REST,m.p);for(const k in sls)sls[k].value=tar[k];
-marks.forEach((x,i)=>{const p=m.k[i];x.visible=!!p;if(p){const h=p[0]<-3.5?scene:p[1]>=.45?upG:jaw,o=h===jaw?PV:[0,0];h.add(x);x.position.set(p[0]-o[0],p[1]-o[1],0)}});
-info.innerHTML='<div class="big ar">'+m.ar+'</div><b>'+m.n+'</b><p>'+m.d+'</p>'}
-$('#op').oninput=e=>{const v=e.target.value/100;setOp(skin,v);setOp(skinL,v);psl['Upper jaw skin'].value=e.target.value;psl['Lower jaw skin'].value=e.target.value};
-$('#cut').onchange=e=>{renderer.clippingPlanes=e.target.checked?[clip]:[]};
-$('#teeth').onchange=e=>{teethG.visible=lowT.visible=e.target.checked};
-$('#follow').onchange=e=>{follow=e.target.checked;rebuild()};
-function setOp(mt,v){mt.transparent=v<1;mt.opacity=v;mt.depthWrite=v>=1;mt.visible=v>0;mt.needsUpdate=true}
-const PARTS=[['Upper jaw skin',skin],['Lower jaw skin',skinL],['Teeth',toothM],['Gums',gumM],['Tongue',tongue.material],['Palate',palM],['Mouth floor',floorM],['Throat wall',throatM],['Nasal passage',nas.material]],psl={},pp=$('#parts');
-PARTS.forEach(([n,mt])=>{const r=document.createElement('div');r.className='row';r.innerHTML='<span>'+n+'</span><input type="range" min="0" max="100" value="'+Math.round((mt.transparent?mt.opacity:1)*100)+'">';const inp=r.querySelector('input');inp.oninput=()=>setOp(mt,inp.value/100);psl[n]=inp;pp.appendChild(r)});
-$('#pt').onchange=e=>{pp.style.display=e.target.checked?'block':'none'};
-$('#reset').onclick=()=>goTo(VIEWS.Outside);
-const VIEWS={'Outside':[.5,-.3,0,17,0,.05],'Front':[.5,0,0,17,Math.PI/2,0],'Inside mouth':[-1,.5,0,5.5,Math.PI/2,.15],'On tongue':[1.5,2,0,4,0,-.9],'Palate':[1,2.4,0,3.5,.6,-1.1],'Throat':[-3.5,-1.5,0,5,Math.PI/2,.5],'Tongue close-up':[2,0,0,7,.5,.3]};
-let goal=null;function goTo(v){goal={x:v[0],y:v[1],z:v[2],dist:v[3],az:v[4],el:v[5]}}
-Object.keys(VIEWS).forEach(n=>{const b=document.createElement('button');b.className='btn';b.textContent=n;b.onclick=()=>goTo(VIEWS[n]);$('#cams').appendChild(b)});
+      // UI
+      const info = $("#info"),
+        chips = [];
+      [...new Set(M.map((m) => m.g))].forEach((g) => {
+        const h = document.createElement("h2");
+        h.textContent = g;
+        $("#groups").appendChild(h);
+        const w = document.createElement("div");
+        w.className = "chips";
+        $("#groups").appendChild(w);
+        M.filter((m) => m.g === g).forEach((m) => {
+          const b = document.createElement("button");
+          b.className = "chip";
+          b.innerHTML = '<span class="ar">' + m.ar + "</span><span>" + m.n + "</span>";
+          b.onclick = () => pick(m, b);
+          w.appendChild(b);
+          chips.push(b);
+        });
+      });
+      const SL = [
+          ["b", "Back of tongue", -2, 2.6, 0.05],
+          ["m", "Middle", -1.5, 2.6, 0.05],
+          ["l", "Blade", -1.5, 2.2, 0.05],
+          ["t", "Tip height", -1.2, 2.2, 0.05],
+          ["tx", "Tip fwd/back", 2.6, 4.8, 0.05],
+          ["jaw", "Lower jaw open (°)", 0, 40, 1],
+          ["up", "Upper jaw tilt (°)", 0, 25, 1],
+        ],
+        sls = {};
+      SL.forEach((s) => {
+        const r = document.createElement("div");
+        r.className = "row";
+        r.innerHTML =
+          "<span>" +
+          s[1] +
+          '</span><input type="range" min="' +
+          s[2] +
+          '" max="' +
+          s[3] +
+          '" step="' +
+          s[4] +
+          '" value="' +
+          REST[s[0]] +
+          '">';
+        const i = r.querySelector("input");
+        i.oninput = () => {
+          tar[s[0]] = +i.value;
+          if (s[0] !== "jaw" && s[0] !== "up") chips.forEach((c) => c.classList.remove("on"));
+        };
+        sls[s[0]] = i;
+        $("#sl").appendChild(r);
+      });
+      function pick(m, b) {
+        chips.forEach((c) => c.classList.toggle("on", c === b));
+        Object.assign(tar, REST, m.p);
+        for (const k in sls) sls[k].value = tar[k];
+        marks.forEach((x, i) => {
+          const p = m.k[i];
+          x.visible = !!p;
+          if (p) {
+            const h = p[0] < -3.5 ? scene : p[1] >= 0.45 ? upG : jaw,
+              o = h === jaw ? PV : [0, 0];
+            h.add(x);
+            x.position.set(p[0] - o[0], p[1] - o[1], 0);
+          }
+        });
+        info.innerHTML =
+          '<div class="big ar">' + m.ar + "</div><b>" + m.n + "</b><p>" + m.d + "</p>";
+      }
+      $("#op").oninput = (e) => {
+        const v = e.target.value / 100;
+        setOp(skin, v);
+        setOp(skinL, v);
+        psl["Upper jaw skin"].value = e.target.value;
+        psl["Lower jaw skin"].value = e.target.value;
+      };
+      $("#cut").onchange = (e) => {
+        renderer.clippingPlanes = e.target.checked ? [clip] : [];
+      };
+      $("#teeth").onchange = (e) => {
+        teethG.visible = lowT.visible = e.target.checked;
+      };
+      $("#follow").onchange = (e) => {
+        follow = e.target.checked;
+        rebuild();
+      };
+      function setOp(mt, v) {
+        mt.transparent = v < 1;
+        mt.opacity = v;
+        mt.depthWrite = v >= 1;
+        mt.visible = v > 0;
+        mt.needsUpdate = true;
+      }
+      const PARTS = [
+          ["Upper jaw skin", skin],
+          ["Lower jaw skin", skinL],
+          ["Teeth", toothM],
+          ["Gums", gumM],
+          ["Tongue", tongue.material],
+          ["Palate", palM],
+          ["Mouth floor", floorM],
+          ["Throat wall", throatM],
+          ["Nasal passage", nas.material],
+        ],
+        psl = {},
+        pp = $("#parts");
+      PARTS.forEach(([n, mt]) => {
+        const r = document.createElement("div");
+        r.className = "row";
+        r.innerHTML =
+          "<span>" +
+          n +
+          '</span><input type="range" min="0" max="100" value="' +
+          Math.round((mt.transparent ? mt.opacity : 1) * 100) +
+          '">';
+        const inp = r.querySelector("input");
+        inp.oninput = () => setOp(mt, inp.value / 100);
+        psl[n] = inp;
+        pp.appendChild(r);
+      });
+      $("#pt").onchange = (e) => {
+        pp.style.display = e.target.checked ? "block" : "none";
+      };
+      $("#reset").onclick = () => goTo(VIEWS.Outside);
+      const VIEWS = {
+        Outside: [0.5, -0.3, 0, 17, 0, 0.05],
+        Front: [0.5, 0, 0, 17, Math.PI / 2, 0],
+        "Inside mouth": [-1, 0.5, 0, 5.5, Math.PI / 2, 0.15],
+        "On tongue": [1.5, 2, 0, 4, 0, -0.9],
+        Palate: [1, 2.4, 0, 3.5, 0.6, -1.1],
+        Throat: [-3.5, -1.5, 0, 5, Math.PI / 2, 0.5],
+        "Tongue close-up": [2, 0, 0, 7, 0.5, 0.3],
+      };
+      let goal = null;
+      function goTo(v) {
+        goal = { x: v[0], y: v[1], z: v[2], dist: v[3], az: v[4], el: v[5] };
+      }
+      Object.keys(VIEWS).forEach((n) => {
+        const b = document.createElement("button");
+        b.className = "btn";
+        b.textContent = n;
+        b.onclick = () => goTo(VIEWS[n]);
+        $("#cams").appendChild(b);
+      });
 
-// loop
-function tick(t){requestAnimationFrame(tick);let ch=false;
-for(const k in tar){const d=tar[k]-cur[k];if(Math.abs(d)>.002){cur[k]+=d*.15;ch=true}else if(d){cur[k]=tar[k];ch=true}}
-if(goal){const k=.12;view.az+=(goal.az-view.az)*k;view.el+=(goal.el-view.el)*k;view.dist+=(goal.dist-view.dist)*k;target.x+=(goal.x-target.x)*k;target.y+=(goal.y-target.y)*k;target.z+=(goal.z-target.z)*k;setCam();if(Math.abs(goal.az-view.az)+Math.abs(goal.el-view.el)+Math.abs(goal.dist-view.dist)<.01)goal=null}
-if(ch)rebuild();const s=1+.25*Math.sin(t/220);marks.forEach(m=>m.scale.setScalar(s));renderer.render(scene,cam)}
-rebuild();setCam();requestAnimationFrame(tick);
-</script></body></html>
+      // loop
+      function tick(t) {
+        requestAnimationFrame(tick);
+        let ch = false;
+        for (const k in tar) {
+          const d = tar[k] - cur[k];
+          if (Math.abs(d) > 0.002) {
+            cur[k] += d * 0.15;
+            ch = true;
+          } else if (d) {
+            cur[k] = tar[k];
+            ch = true;
+          }
+        }
+        if (goal) {
+          const k = 0.12;
+          view.az += (goal.az - view.az) * k;
+          view.el += (goal.el - view.el) * k;
+          view.dist += (goal.dist - view.dist) * k;
+          target.x += (goal.x - target.x) * k;
+          target.y += (goal.y - target.y) * k;
+          target.z += (goal.z - target.z) * k;
+          setCam();
+          if (
+            Math.abs(goal.az - view.az) +
+              Math.abs(goal.el - view.el) +
+              Math.abs(goal.dist - view.dist) <
+            0.01
+          )
+            goal = null;
+        }
+        if (ch) rebuild();
+        const s = 1 + 0.25 * Math.sin(t / 220);
+        marks.forEach((m) => m.scale.setScalar(s));
+        renderer.render(scene, cam);
+      }
+      rebuild();
+      setCam();
+      requestAnimationFrame(tick);
+    </script>
+  </body>
+</html>
