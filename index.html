@@ -206,33 +206,34 @@
         pointer-events: none;
       }
       .preview iframe {
-        transition: opacity 0.25s, filter 0.25s;
+        transition: filter 0.25s;
       }
       .preview:hover iframe {
-        opacity: 0.45;
-        filter: blur(2px);
+        filter: blur(6px);
       }
       .preview .go {
         position: absolute;
         inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0, 0, 0, 0.3);
+        background: rgba(10, 13, 18, 0.93);
         opacity: 0;
         transition: opacity 0.25s;
+        cursor: pointer;
       }
       .preview:hover .go {
         opacity: 1;
       }
       .preview .go .btn {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.94);
         padding: 16px 34px;
         font-size: 17px;
-        transform: scale(0.94);
+        white-space: nowrap;
         transition: transform 0.25s;
       }
       .preview:hover .go .btn {
-        transform: scale(1);
+        transform: translate(-50%, -50%) scale(1);
       }
       @media (max-width: 700px) {
         .preview {
