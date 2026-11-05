@@ -386,6 +386,13 @@
           overflow: visible;
         }
       }
+      .tabs { display: flex; gap: 4px; background: var(--chip); padding: 3px; border-radius: 99px; margin: 8px 0 4px; }
+      .tab { flex: 1; border: 0; background: transparent; color: var(--mut); padding: 5px; border-radius: 99px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+      .tab.on { background: var(--acc); color: var(--accink); }
+      .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+      .tag { padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); font-size: 11px; color: var(--mut); }
+      .tag.vis { border-color: var(--acc); color: var(--acc); font-weight: 600; }
+      #sifat .ar { font-size: 20px; }
     </style>
   </head>
   <body>
@@ -393,7 +400,12 @@
       <div class="side l">
         <h1>Makharij Viewer</h1>
         <p class="sub">Stylized model · v1 prototype</p>
+        <div class="tabs"><button class="tab on" id="tabM">Makharij</button><button class="tab" id="tabS">Sifat</button></div>
         <div id="groups"></div>
+        <div id="sifatWrap" style="display: none">
+          <div class="chips" id="sifat"></div>
+          <p class="note">Pick a letter to see its sifat. Highlighted tags (Isti'la, Itbaq, Ghunnah) also show up in the 3D view.</p>
+        </div>
       </div>
       <div class="stage" id="stage">
         <div class="ov" id="info">
@@ -1100,6 +1112,86 @@
         b.onclick = () => goTo(VIEWS[n]);
         $("#cams").appendChild(b);
       });
+
+      // ---- Sifat tab ----
+      const SF = {
+        hams: "فحثهشخصسكت", shid: "ءجدقطبكت", taw: "لنعمر", ist: "خصضغطقظ", itb: "صضطظ",
+        idh: "فرمنلب", saf: "صزس", qal: "قطبجد", leen: "وي", inh: "لر", gh: "نم",
+      };
+      const LM = {
+        "ء": "Deepest throat", "ا": "Jawf", "ب": "Ba Mim Waw", "ت": "Ta Dal Ta", "ث": "Tha Dhal Dha",
+        "ج": "Jim Shin Ya", "ح": "Middle throat", "خ": "Nearest throat", "د": "Ta Dal Ta", "ذ": "Tha Dhal Dha",
+        "ر": "Ra", "ز": "Sad Sin Zay", "س": "Sad Sin Zay", "ش": "Jim Shin Ya", "ص": "Sad Sin Zay",
+        "ض": "Dad", "ط": "Ta Dal Ta", "ظ": "Tha Dhal Dha", "ع": "Middle throat", "غ": "Nearest throat",
+        "ف": "Fa", "ق": "Qaf", "ك": "Kaf", "ل": "Lam", "م": "Ba Mim Waw", "ن": "Nun",
+        "ه": "Deepest throat", "و": "Ba Mim Waw", "ي": "Jim Shin Ya",
+      };
+      const TIP = {
+        Hams: "breath flows, no cord vibration", Jahr: "cords vibrate, breath is held back",
+        Shiddah: "sound stops completely", Tawassut: "sound partly flows", Rakhawah: "sound flows",
+        "Isti'la": "back of the tongue rises", Istifal: "back of the tongue stays low",
+        Itbaq: "tongue covers the palate", Infitah: "tongue stays open from the palate",
+        Idhlaq: "said from the tongue tip or lips", Ismat: "said from other places",
+        Safeer: "whistling sound", Qalqalah: "echoing bounce when sakin", Leen: "ease when sakin after a fatha",
+        Inhiraf: "tongue tilts", Takrir: "tongue flutter (never exaggerate it)",
+        Tafashshi: "air spreads in the mouth", Istitalah: "stretches along the side of the tongue",
+        Ghunnah: "nasal sound",
+      };
+      const VIS = ["Isti'la", "Itbaq", "Ghunnah"];
+      function sifatTags(c) {
+        const has = (k) => SF[k].includes(c), t = [];
+        t.push(has("hams") ? "Hams" : "Jahr");
+        t.push(has("shid") ? "Shiddah" : has("taw") ? "Tawassut" : "Rakhawah");
+        t.push(has("ist") ? "Isti'la" : "Istifal");
+        t.push(has("itb") ? "Itbaq" : "Infitah");
+        t.push(has("idh") ? "Idhlaq" : "Ismat");
+        if (has("saf")) t.push("Safeer");
+        if (has("qal")) t.push("Qalqalah");
+        if (has("leen")) t.push("Leen");
+        if (has("inh")) t.push("Inhiraf");
+        if (c === "ر") t.push("Takrir");
+        if (c === "ش") t.push("Tafashshi");
+        if (c === "ض") t.push("Istitalah");
+        if (has("gh")) t.push("Ghunnah");
+        return t;
+      }
+      const basePick = pick;
+      pick = function (m, b) {
+        nas.material.emissive.setHex(0);
+        basePick(m, b);
+      };
+      function pickLetter(c, btn) {
+        const m0 = M.find((x) => x.n === LM[c]), p = Object.assign({}, m0.p), k = m0.k.slice(),
+          tg = sifatTags(c), ist = tg.includes("Isti'la"), itb = tg.includes("Itbaq"), gh = tg.includes("Ghunnah");
+        if (ist && (p.b === undefined || p.b < 1.2)) p.b = 1.4;
+        if (itb) p.m = Math.max(p.m === undefined ? REST.m : p.m, 1.7);
+        if (ist && m0.n !== "Qaf") k.push([-1.6, 2.1]);
+        if (itb) k.push([1.5, 2.6]);
+        if (gh) k.push([1.5, 3.8]);
+        pick({ ar: c, n: m0.n, d: "", k: k.slice(0, 3), p: p }, btn);
+        nas.material.emissive.setHex(gh ? 0x1fb890 : 0);
+        info.innerHTML =
+          '<div class="big ar">' + c + "</div><b>" + m0.n + '</b><div class="tags">' +
+          tg.map((t) => '<span class="tag' + (VIS.includes(t) ? " vis" : "") + '" title="' + TIP[t] + '">' + t + "</span>").join("") +
+          "</div>";
+      }
+      const sf = $("#sifat");
+      "ء ا ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م ن ه و ي".split(" ").forEach((c) => {
+        const b = document.createElement("button");
+        b.className = "chip";
+        b.innerHTML = '<span class="ar">' + c + "</span>";
+        b.onclick = () => pickLetter(c, b);
+        sf.appendChild(b);
+        chips.push(b);
+      });
+      function tab(s) {
+        $("#groups").style.display = s ? "none" : "";
+        $("#sifatWrap").style.display = s ? "block" : "none";
+        $("#tabM").classList.toggle("on", !s);
+        $("#tabS").classList.toggle("on", s);
+      }
+      $("#tabM").onclick = () => tab(false);
+      $("#tabS").onclick = () => tab(true);
 
       // loop
       function tick(t) {
