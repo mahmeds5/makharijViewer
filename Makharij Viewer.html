@@ -404,7 +404,7 @@
         <div id="groups"></div>
         <div id="sifatWrap" style="display: none">
           <div class="chips" id="sifat"></div>
-          <p class="note">Pick a letter to see its sifat. Highlighted tags (Isti'la, Itbaq, Ghunnah) also show up in the 3D view.</p>
+          <p class="note">Pick a letter to see its sifat. Highlighted tags (Isti'la, Itbaq, Ghunnah) also show up in the 3D view. Blue arrows show airflow: stopped (shiddah), slowed (tawassut) or flowing (rakhawah). Jahr letters make the arrows vibrate.</p>
         </div>
       </div>
       <div class="stage" id="stage">
@@ -457,6 +457,10 @@
           <label class="ck">
             <input type="checkbox" id="pt" checked />
             Per-part opacity
+          </label>
+          <label class="ck">
+            <input type="checkbox" id="air" checked />
+            Airflow arrows
           </label>
         </div>
         <h2>Per-part opacity</h2>
@@ -1158,6 +1162,7 @@
       const basePick = pick;
       pick = function (m, b) {
         nas.material.emissive.setHex(0);
+        flow.on = false;
         basePick(m, b);
       };
       function pickLetter(c, btn) {
@@ -1170,6 +1175,11 @@
         if (gh) k.push([1.5, 3.8]);
         pick({ ar: c, n: m0.n, d: "", k: k.slice(0, 3), p: p }, btn);
         nas.material.emissive.setHex(gh ? 0x1fb890 : 0);
+        flow.on = true;
+        flow.mode = tg.includes("Shiddah") ? "blocked" : tg.includes("Tawassut") ? "partial" : "free";
+        flow.ub = nearestU(m0.k[0]);
+        flow.jahr = tg.includes("Jahr");
+        flow.nas = gh;
         info.innerHTML =
           '<div class="big ar">' + c + "</div><b>" + m0.n + '</b><div class="tags">' +
           tg.map((t) => '<span class="tag' + (VIS.includes(t) ? " vis" : "") + '" title="' + TIP[t] + '">' + t + "</span>").join("") +
@@ -1192,6 +1202,57 @@
       }
       $("#tabM").onclick = () => tab(false);
       $("#tabS").onclick = () => tab(true);
+
+      // ---- Airflow arrows ----
+      const mouthPath = new T.CatmullRomCurve3(
+        [[-3.4, -2.6], [-3.3, -0.6], [-2.2, 0.9], [0, 1.3], [2.5, 1.2], [4.8, 0.5], [6.4, 0.4]].map((p) => new T.Vector3(p[0], p[1], 0)),
+      );
+      const nasPath = new T.CatmullRomCurve3(
+        [[-3.2, 1.2], [-3.4, 2.9], [-1, 3.5], [2, 3.8], [4.8, 3.5], [6.4, 3.2]].map((p) => new T.Vector3(p[0], p[1], 0)),
+      );
+      const arrowGeo = new T.ConeGeometry(0.2, 0.55, 8);
+      const mkArrows = (n) =>
+        Array.from({ length: n }, () => {
+          const m = new T.Mesh(arrowGeo, new T.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.9, depthTest: false }));
+          m.renderOrder = 9;
+          m.visible = false;
+          scene.add(m);
+          return m;
+        });
+      const mouthA = mkArrows(14), nasA = mkArrows(8);
+      const flow = { on: false, mode: "free", ub: 1, jahr: false, nas: false };
+      let airOn = true;
+      function nearestU(p) {
+        let best = 1, bd = 1e9;
+        for (let k = 0; k <= 200; k++) {
+          const q = mouthPath.getPoint(k / 200), d = (q.x - p[0]) ** 2 + (q.y - p[1]) ** 2;
+          if (d < bd) { bd = d; best = k / 200; }
+        }
+        return best;
+      }
+      function placeArrow(m, path, u, i, t, jit) {
+        const c = Math.min(0.999, Math.max(0, u)), p = path.getPoint(c), tg = path.getTangent(c);
+        m.position.set(p.x, p.y + (jit ? Math.sin(t / 35 + i * 2) * 0.1 : 0), 0);
+        m.rotation.z = Math.atan2(tg.y, tg.x) - Math.PI / 2;
+      }
+      function updateFlow(t) {
+        const show = airOn && flow.on;
+        mouthA.forEach((m, i) => {
+          if (!show) { m.visible = false; return; }
+          const raw = (t / 2600 + i / mouthA.length) % 1;
+          let u = raw, s = 1, vis = true;
+          if (flow.mode === "blocked") { u = Math.min(raw, flow.ub - 0.03 * (i % 4) - 0.01); s = 1 + 0.12 * Math.sin(t / 80 + i); }
+          else if (flow.mode === "partial" && raw > flow.ub) { vis = i % 2 === 0; s = 0.6; }
+          m.visible = vis;
+          m.scale.setScalar(s);
+          placeArrow(m, mouthPath, u, i, t, flow.jahr);
+        });
+        nasA.forEach((m, i) => {
+          m.visible = show && flow.nas;
+          if (m.visible) placeArrow(m, nasPath, (t / 2600 + i / nasA.length) % 1, i, t, flow.jahr);
+        });
+      }
+      $("#air").onchange = (e) => { airOn = e.target.checked; };
 
       // loop
       function tick(t) {
@@ -1227,6 +1288,7 @@
         if (ch) rebuild();
         const s = 1 + 0.25 * Math.sin(t / 220);
         marks.forEach((m) => m.scale.setScalar(s));
+        updateFlow(t);
         renderer.render(scene, cam);
       }
       rebuild();
